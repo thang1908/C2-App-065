@@ -19,11 +19,34 @@ import urllib.error
 from datetime import datetime, timezone
 from pathlib import Path
 
+
+def _load_env_file(path: str = ".env") -> None:
+    """Best-effort .env loader for git hooks running outside the app venv."""
+    env_path = Path(path)
+    if not env_path.exists():
+        return
+
+    for raw_line in env_path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+
+        key, value = line.split("=", 1)
+        key = key.strip()
+        value = value.strip()
+        if not key or key in os.environ:
+            continue
+
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in {'"', "'"}:
+            value = value[1:-1]
+        os.environ[key] = value
+
+
 try:
     from dotenv import load_dotenv
     load_dotenv()
 except ImportError:
-    pass
+    _load_env_file()
 
 SERVER_URL = os.environ.get("AI_LOG_SERVER", "")
 API_KEY = os.environ.get("AI_LOG_API_KEY", "")
